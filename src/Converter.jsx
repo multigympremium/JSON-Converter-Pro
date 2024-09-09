@@ -148,7 +148,7 @@ const Converter = () => {
                 : member.Gender
             : getRandomItem(["Male", "Female"]),
             religion: getRandomItem(["Islam", "Hindu", "Christian", "Buddhism", "Other"]),
-            blood_group: member.BloodGroupName || getRandomItem(["O+", "A+", "B+", "AB+", "O-", "A-", "B-", "AB-"]),
+            blood_group: member.BloodGroupName === "NOT TESTED" ? "B+" : (member.BloodGroupName || getRandomItem(["O+", "A+", "B+", "AB+", "O-", "A-", "B-", "AB-"])),
             height: member.Height ? `${member.Height} cm` : generateRandomHeight(),
             weight: member.Weight ? member.Weight : generateRandomWeight(),
             profession: member.Occupation || getRandomItem(professions),  // Random profession from the list of 100 professions
