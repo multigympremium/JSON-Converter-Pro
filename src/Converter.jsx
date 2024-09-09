@@ -172,7 +172,7 @@ const Converter = () => {
 
         for (let i = 0; i < convertedData.length; i++) {
             try {
-                await axios.post('http://localhost:5000/api/users/json', convertedData[i]);
+                await axios.post('https://multigym-management-server-dmmji.ondigitalocean.app/api/users/json', convertedData[i]);
                 setSubmittedCount((prevCount) => prevCount + 1); // Update the count after each successful submission
                 setSubmitMessage(`Submitted ${i + 1} out of ${convertedData.length} successfully`);
             } catch (error) {
