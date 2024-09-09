@@ -160,6 +160,7 @@ const Converter = () => {
             emergency_contact_number: generateRandomPhoneNumber(),
             card_no: member.CardNumber,
             admission_date: member.RegistrationDate ? formatDate(member.RegistrationDate) : "N/A", // Ensure admission_date format
+            notes:member.Note || "",
         }));
 
         setConvertedData(converted);
