@@ -126,67 +126,90 @@ const Converter = () => {
     const [convertedData, setConvertedData] = useState(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [submitMessage, setSubmitMessage] = useState('');
-    const [submittedCount, setSubmittedCount] = useState(0); // Track submitted items
+    const [submittedCount, setSubmittedCount] = useState(0);
+    const [failedData, setFailedData] = useState([]);  // Track failed submissions
 
     const handleConvert = () => {
         const parsedData = JSON.parse(jsonData);
         const converted = parsedData.data.map(member => ({
+            // Conversion logic remains the same
             full_name: member.FullName,
-            email: member.Email || "",  // Use empty string if email is missing
+            email: member.Email || "",
             contact_no: member.ContactNumber,
             member_id: `${member.MemberTextID}`,
-            nickname: member.FullName.split(' ')[0], // Using first name as nickname
+            nickname: member.FullName.split(' ')[0],
             date_of_birth: member.DateOfBirth === "01 Jan 0001" ? generateRandomDate() : member.DateOfBirth,
-            nid_number: member.NID || generateRandomNumber(getRandomItem([10, 13, 17])), // Random NID number
+            nid_number: member.NID || generateRandomNumber(getRandomItem([10, 13, 17])),
             address: member.Address || "Mohammadpur, Dhaka",
             status: getRandomItem(["Married", "Unmarried", "Divorced", "Don't say"]),
-            gender: member.Gender
-            ? member.Gender.toLowerCase() === "male"
-                ? "Male"
-                : member.Gender.toLowerCase() === "female"
-                ? "Female"
-                : member.Gender
-            : getRandomItem(["Male", "Female"]),
+            gender: member.Gender ? (member.Gender.toLowerCase() === "male" ? "Male" : "Female") : getRandomItem(["Male", "Female"]),
             religion: getRandomItem(["Islam", "Hindu", "Christian", "Buddhism", "Other"]),
             blood_group: member.BloodGroupName === "NOT TESTED" ? "B+" : (member.BloodGroupName || getRandomItem(["O+", "A+", "B+", "AB+", "O-", "A-", "B-", "AB-"])),
             height: member.Height ? `${member.Height} cm` : generateRandomHeight(),
             weight: member.Weight ? member.Weight : generateRandomWeight(),
-            profession: member.Occupation || getRandomItem(professions),  // Random profession from the list of 100 professions
-            branch: "shia", // Fixed value
-            expiredate: member.CardExpireOn ? formatDate(member.CardExpireOn) : "N/A", // Ensure expiredate format
-            photourl: member.ImageName ? convertImageUrl(member.ImageName) : 'N/A', // Convert image URL
-            role: "member", // Fixed value
+            profession: member.Occupation || getRandomItem(professions),
+            branch: "shia",
+            expiredate: member.CardExpireOn ? formatDate(member.CardExpireOn) : "N/A",
+            photourl: member.ImageName ? convertImageUrl(member.ImageName) : 'N/A',
+            role: "member",
             emergency_contact_name: generateBangladeshiName(),
             emergency_contact_number: generateRandomPhoneNumber(),
             card_no: member.CardNumber,
-            admission_date: member.RegistrationDate ? formatDate(member.RegistrationDate) : "N/A", // Ensure admission_date format
-            notes:member.Note || "",
+            admission_date: member.RegistrationDate ? formatDate(member.RegistrationDate) : "N/A",
+            notes: member.Note || "",
         }));
 
         setConvertedData(converted);
         setSubmittedCount(0); // Reset the count when new data is converted
+        setFailedData([]); // Clear previous failed data
     };
 
     const handleSubmit = async () => {
         setIsSubmitting(true);
-        setSubmitMessage(''); // Clear previous message
+        setSubmitMessage('');
+        const failed = [];
 
         for (let i = 0; i < convertedData.length; i++) {
             try {
                 await axios.post('https://multigym-management-server-dmmji.ondigitalocean.app/api/users/json', convertedData[i]);
-                setSubmittedCount((prevCount) => prevCount + 1); // Update the count after each successful submission
-                setSubmitMessage(`Submitted ${i + 1} out of ${convertedData.length} successfully`);
+                setSubmittedCount((prevCount) => prevCount + 1);
             } catch (error) {
-                setSubmitMessage(`Error submitting item ${i + 1}`);
-                break; // Stop submitting if there's an error
+                failed.push(convertedData[i]);
             }
         }
 
-        if (submittedCount === convertedData.length) {
-            setSubmitMessage('All data submitted successfully!');
+        setFailedData(failed); // Store the failed data
+        setSubmitMessage(failed.length > 0 ? `${failed.length} data submissions failed` : 'All data submitted successfully!');
+        setIsSubmitting(false);
+    };
+
+    const handleRetryFailed = async () => {
+        setIsSubmitting(true);
+        setSubmitMessage('');
+        const newFailedData = [];
+
+        for (let i = 0; i < failedData.length; i++) {
+            try {
+                await axios.post('https://multigym-management-server-dmmji.ondigitalocean.app/api/users/json', failedData[i]);
+                setSubmittedCount((prevCount) => prevCount + 1);
+            } catch (error) {
+                newFailedData.push(failedData[i]); // Re-push the failed data
+            }
         }
 
+        setFailedData(newFailedData); // Update the failed data
+        setSubmitMessage(newFailedData.length > 0 ? `${newFailedData.length} data submissions still failed` : 'All failed data submitted successfully!');
         setIsSubmitting(false);
+    };
+
+    const downloadFailedData = () => {
+        const dataStr = `data:text/json;charset=utf-8,${encodeURIComponent(JSON.stringify(failedData, null, 2))}`;
+        const downloadAnchorNode = document.createElement('a');
+        downloadAnchorNode.setAttribute('href', dataStr);
+        downloadAnchorNode.setAttribute('download', 'failed_data.json');
+        document.body.appendChild(downloadAnchorNode);
+        downloadAnchorNode.click();
+        downloadAnchorNode.remove();
     };
 
     return (
@@ -212,28 +235,51 @@ const Converter = () => {
             </Button>
 
             {convertedData && (
-                <>                    <Button
-                variant="contained"
-                color="success"
-                className="mt-4"
-                onClick={handleSubmit}
-                disabled={isSubmitting}
-            >
-                {isSubmitting ? 'Submitting...' : `Submit Data (${convertedData.length})`}
-            </Button>
+                <>
+                    <Button
+                        variant="contained"
+                        color="success"
+                        className="mt-4"
+                        onClick={handleSubmit}
+                        disabled={isSubmitting}
+                    >
+                        {isSubmitting ? 'Submitting...' : `Submit Data (${convertedData.length})`}
+                    </Button>
 
-            {submitMessage && (
-                <div className="mt-4">
-                    <p>{submitMessage}</p>
-                </div>
-            )}
+                    {failedData.length > 0 && (
+                        <>
+                            <Button
+                                variant="contained"
+                                color="warning"
+                                className="mt-4"
+                                onClick={handleRetryFailed}
+                                disabled={isSubmitting}
+                            >
+                                {isSubmitting ? 'Retrying...' : `Retry Failed Data (${failedData.length})`}
+                            </Button>
+
+                            <Button
+                                variant="contained"
+                                color="secondary"
+                                className="mt-4"
+                                onClick={downloadFailedData}
+                            >
+                                Download Failed Data
+                            </Button>
+                        </>
+                    )}
+
+                    {submitMessage && (
+                        <div className="mt-4">
+                            <p>{submitMessage}</p>
+                        </div>
+                    )}
+
                     <div className="mt-4 p-4 bg-gray-100 rounded">
                         <pre className="whitespace-pre-wrap">
                             {JSON.stringify(convertedData, null, 2)}
                         </pre>
                     </div>
-
-
                 </>
             )}
         </div>
